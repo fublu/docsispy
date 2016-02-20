@@ -2,7 +2,8 @@
 import json
 import argparse
 import netsnmp
-from fastsnmpy import SnmpSession
+from easysnmp import Session
+from datetime import datetime
 
 def load_json_config(filename):
     with open(filename) as data_file:
@@ -26,6 +27,9 @@ def manage_cli_arguments():
     parser.add_argument('mac', help="""
         mac address of the modem. Example: dc537c19bc89. The provided MAC is 
         compared with the one fetched from the modem.""")
+    parser.add_argument('bpid', help="""
+        Unique customer reference. 
+        Only used to add it on the result line.""")
 
     args = parser.parse_args()
     return args
@@ -35,13 +39,17 @@ if __name__ == "__main__":
         
     args = manage_cli_arguments()
     config = load_json_config(args.config_file)
-    
     pollbotrc = config["pollbot"]
     
     oid = []
     for arr in pollbotrc["oid"]:
         print "{:20} - {:40}  - {}".format(arr[0], arr[2], arr[3])
         oid += [arr[3]]
-
-    snmp_session = SnmpSession(targets = [args.ip], oidlist = oid, community = config['general']['community_ro'])
-    print snmp_session.snmpbulkwalk()
+    result = "{};{};{};{}".format(datetime.today().strftime('%Y%m%d-%H%M%S'),
+                                  args.bpid, args.mac, args.ip)
+    session = Session(hostname= args.ip, community=config['general']['community_ro'], version=2)
+    get_res = session.get(oid)
+    
+    result = result + ';' + ';'.join([x.value for x in get_res])
+    #print("OID: {:40} - {}".format(x.oid, x.value))
+    print(result)
