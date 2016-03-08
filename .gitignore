@@ -4,6 +4,7 @@ __pycache__
 *.secret
 
 ip.txt
+*.db
 
 # backup, and autosave
 *~
