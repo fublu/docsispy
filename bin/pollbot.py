@@ -1,11 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import json
 import argparse
 import string
-import netsnmp
 from easysnmp import Session
 from datetime import datetime
 import logging, logging.handlers
+from binascii import hexlify
 
 def init_traces(level):
     """
@@ -78,6 +78,16 @@ def manage_cli_arguments():
     return args
 
 
+def print_mac(src):
+    traces = logging.getLogger('traces')
+    traces.debug('Entry in print_mac')
+    traces.debug('Length of src: {} ({}), type: {}'.format(len(src), src, type(src)))
+    rtn = hexlify(src.encode('latin-1')).decode('latin-1')
+    traces.debug('Length of rtn: {}, rtn = {}, type = {}'.format(len(rtn), rtn, type(rtn)))
+    
+    return rtn
+    
+    
 def get_one_ip(botrc, ip = '127.0.0.1', community = 'public'):
     """
     Based on the botrc configuration, it performs ONE snmp get query with
@@ -93,7 +103,7 @@ def get_one_ip(botrc, ip = '127.0.0.1', community = 'public'):
     traces = logging.getLogger('traces')
     traces.debug("Entry in get_one_ip")
     traces.debug(botrc['oids'])
-    session = Session(hostname=ip, community=community, version=2)
+    session = Session(hostname=ip, community=community, version=2, timeout=10)
     get_oid  = []
     for arr in botrc['oids']:
         traces.debug("{:20} - {}".format(arr[0], arr[2]))
@@ -103,7 +113,7 @@ def get_one_ip(botrc, ip = '127.0.0.1', community = 'public'):
 
     if traces.getEffectiveLevel() <= logging.INFO:
         for v in get_res:
-            traces.info("get {:20} --> {}".format(v.oid, v.value))
+            #traces.info("get {:20} --> {}".format(v.oid, v.value))
             traces.info(v)
     result_str = ';'.join([x.value for x in get_res])
     
@@ -130,12 +140,13 @@ def getbulk_one_ip(botrc, ip = '127.0.0.1', community = 'public'):
     traces.debug("Entry in getbulk_one_ip")
     traces.debug(botrc['oids'])
     
-    session = Session(hostname=ip, community=community, version=2)
+    session = Session(hostname=ip, community=community, version=2, timeout=10)
     get_oid  = []
     results = []
     for arr in botrc['oids']:
         traces.debug("{:20} - {}".format(arr[0], arr[2]))
-        results += [session.get_bulk(arr[2], 0, 20)]
+        bulk_res =  session.get_bulk(arr[2], 0, 20)
+        
 
     if traces.getEffectiveLevel() <= logging.INFO:
         for var_list in results:
@@ -168,13 +179,14 @@ def strip_non_printable(value):
 
     return printable_value
 
-def get_csv(var_list, ip, mac, bpid):
+def get_csv(var_list, ip, bpid):
     """
     Produce a CSV string from the input parameters.
+    Assumption: first var in var_list is the MAC address.
     """
     result = "{};{};{};{}".format(datetime.today().strftime('%Y%m%d-%H%M%S'),
-              bpid, mac, ip)
-    for v in var_list:
+              bpid, print_mac(var_list[0].value) , ip)
+    for v in var_list[1:]:
         if isinstance(v, list):
             if len(v)-2 <= 0:
                 # no OID actually fetched
@@ -212,5 +224,5 @@ if __name__ == "__main__":
             result += getbulk_one_ip(query, args.ip, 
                         config['general']['community_ro'])
                 
-    print get_csv(result, args.ip, args.mac, args.bpid)
+    print(get_csv(result, args.ip, args.bpid))
 
