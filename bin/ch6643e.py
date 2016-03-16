@@ -104,8 +104,13 @@ class ch6643e(Session):
         self.boot_status = res[2].value
         self.fw_version  = res[3].value
         self.fw_filename = res[4].value
-        self.wan_address = str(ipaddress.IPv4Address(res[5].value.encode('latin-1')))
-        self.wan_gateway = str(ipaddress.IPv4Address(res[6].value.encode('latin-1')))
+        try:
+            self.wan_address = str(ipaddress.IPv4Address(res[5].value.encode('latin-1')))
+            self.wan_gateway = str(ipaddress.IPv4Address(res[6].value.encode('latin-1')))
+        except ipaddress.AddressValueError:
+            # No wan received
+            self.wan_address = 'no_WAN'
+            self.wan_gateway = 'no_WAN'
        
     def get_signals(self):
         """
