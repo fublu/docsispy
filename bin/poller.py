@@ -4,6 +4,7 @@
 
 
 from ch6643e import ch6643e
+from cache import cachedb
 from datetime import datetime
 import csv
 import os
@@ -15,9 +16,9 @@ class poller:
     """
     Based on an ip.txt input file, it query all modems and produce a CSV file
     """
-    def __init__(self, ip_file = 'ip.txt', threads = os.cpu_count(), read_community = 'public', cachedb = None):
+    def __init__(self, ip_file = 'ip.txt', processes = os.cpu_count(), read_community = 'public', cachedb = None):
         self.ip_file   = ip_file
-        self.threads   = threads
+        self.processes   = processes
         self.timestamp = datetime.today()
         
         self.ip_fieldnames      = ['bpid', 'mac', 'ip']
@@ -42,15 +43,16 @@ class poller:
         
         Mono-process
         """
-        self.__debug("Start of poller.query_all_ip - mono-thread")
+        self.__debug("Start of poller.query_all_ip - mono-process")
         self._open_output_file()
         
         with open(self.ip_file, 'r') as csvfile:
             csvreader = csv.DictReader(csvfile, fieldnames = self.ip_fieldnames, delimiter = ';')
             for line in csvreader:
-                entity = { 'read_community': self.read_community, 'ip': line['ip'], 'bpid': line['bpid'], 'mac': line['mac'], 'cachedb': self.cachedb, 'output_file': self.out }
-                query_one_modem(entity)
-#                self.out.write(query_one_modem(entity) + '\n')
+                entity = { 'read_community': self.read_community, 'ip': line['ip'], 'bpid': line['bpid'], 'mac': line['mac']}
+                if (self.cachedb):
+                    entity['do_cache'] = True
+                self.out.write(query_one_modem(entity))
 #                modem = ch6643e(hostname = line['ip'],
 #                    community = self.read_community,
 #                    bpid = line['bpid'])
@@ -59,21 +61,23 @@ class poller:
         
         self._close_output_file()
         
-    def query_all_ip_multithread(self):
+    def query_all_ip_multiprocesses(self):
         """
-        Same as method query_all_ip, but with multithread support
+        Same as method query_all_ip, but with multiprocesses support
         """
-        self.__debug("Start of poller.query_all_ip_multithreads with {} processes".format(self.threads))
+        self.__debug("Start of poller.query_all_ip_multiprocesses with {} processes".format(self.processes))
         self._open_output_file()
         in_q= []
         out_q = Queue()
         with open(self.ip_file, 'r') as csvfile:
             csvreader = csv.DictReader(csvfile, fieldnames = self.ip_fieldnames, delimiter = ';')
             for line in csvreader:
-                entity = { 'read_community': self.read_community, 'ip': line['ip'], 'bpid': line['bpid'], 'mac': line['mac'], 'cachedb': self.cachedb}
+                entity = { 'read_community': self.read_community, 'ip': line['ip'], 'bpid': line['bpid'], 'mac': line['mac']}
+                if (self.cachedb):
+                    entity['do_cache'] = True
                 in_q.append(entity)
         self.__debug(in_q)
-        worker_pool = Pool(processes = self.threads)
+        worker_pool = Pool(processes = self.processes)
         worker_pool.map_async(query_one_modem, in_q, callback = out_q.put)
         self.__debug("Wait for worker_pool to close...")
         worker_pool.close()
@@ -87,27 +91,27 @@ class poller:
         self._close_output_file()
         
     def query_all(self):
-        if self.threads > 1:
-            return self.query_all_ip_multithread()
+        if self.processes > 1:
+            return self.query_all_ip_multiprocesses()
         else:
             return self.query_all_ip()
         
 
 # Functions for multiprocessing
 def query_one_modem(entity):
-    print("query one modem")
     community = entity['read_community']
     ip = entity['ip']
     bpid = entity['bpid']
     mac = entity['mac']
-    cachedb = entity['cachedb']
+    do_cache = entity['do_cache']
 
     traces = logging.getLogger('traces')
-    traces.debug('query_one_modem: for modem {} (mac: {})'.format(ip, mac))
+    traces.debug('query_one_modem (PID {}): for modem {} (mac: {})'.format(os.getpid(), ip, mac))
     modem = ch6643e(hostname = ip, community = community, bpid = bpid, mac = mac)
     modem.query_all()
-    if cachedb and modem.state == 'completed':
-        cachedb.compute_usage(modem)
+    if do_cache and modem.state == 'completed':
+        cache = cachedb()
+        cache.compute_usage(modem)
     
     #output_file.write(modem.get_legacy_csv_line() + '\n')
     return modem.get_legacy_csv_line() + '\n'

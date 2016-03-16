@@ -88,7 +88,7 @@ if __name__ == '__main__':
     traces.info("Start of the program")
     config = load_json_config(args.config_file)
 
-    poller = poller(ip_file = args.ipfile, threads = args.parallel, read_community = config['read_community'])
+    poller = poller(ip_file = args.ipfile, processes = args.parallel, read_community = config['read_community'])
 
     if args.usage:
         cache = cachedb()
