@@ -3,8 +3,10 @@ __pycache__
 # Specific for secret configuration parameters
 *.secret
 
-ip.txt
+# ignore all IP input files
+*ip.txt
 *.db
+results_*.txt
 
 # backup, and autosave
 *~
