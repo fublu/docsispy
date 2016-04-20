@@ -16,7 +16,7 @@ class ch6643e(Session):
 
         self.bpid = bpid
         Session.__init__(self, hostname=hostname, version=2, 
-            community=community, timeout=timeout, retries=retries)
+            community=community, timeout=timeout, retries=retries, use_numeric=True)
         
         # Not strictly required, but help to describe the data model
         self.state       = 'init'
@@ -130,7 +130,7 @@ class ch6643e(Session):
         """
         Many SNMP GET BULK operations to mimic an SNMP WALK
         """
-        regexp = re.compile('iso' + oid[2:] + '(?:\.(\d+))*')
+        regexp = re.compile(oid + '(?:\.(\d+))*')
         
         this_tree = oid
         in_this_tree = True
