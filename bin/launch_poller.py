@@ -8,7 +8,7 @@ Main program to launch the poller class
 
 from poller import poller
 from cache  import cachedb
-import argparse, os, json
+import argparse, json, multiprocessing
 import logging, logging.handlers
 
 def init_traces(level):
@@ -66,7 +66,7 @@ def manage_cli_arguments():
 
     parser.set_defaults(usage=True)
     parser.set_defaults(config_file="../conf/docsispy.secret")
-    parser.set_defaults(parallel = os.cpu_count())
+    parser.set_defaults(parallel = multiprocessing.cpu_count())
     args = parser.parse_args()
     
     if args.debug:

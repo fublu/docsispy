@@ -9,6 +9,7 @@ from datetime import datetime
 import csv
 import os
 import json
+import multiprocessing
 from multiprocessing import Pool, Queue
 import logging
 
@@ -16,7 +17,7 @@ class poller:
     """
     Based on an ip.txt input file, it query all modems and produce a CSV file
     """
-    def __init__(self, ip_file = 'ip.txt', processes = os.cpu_count(), read_community = 'public', cachedb = None):
+    def __init__(self, ip_file = 'ip.txt', processes = multiprocessing.cpu_count(), read_community = 'public', cachedb = None):
         self.ip_file   = ip_file
         self.processes   = processes
         self.timestamp = datetime.today()
