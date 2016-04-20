@@ -139,7 +139,7 @@ class ch6643e(Session):
             for s in res:
                 self.__debug(s)
                 if s.oid == oid:
-					var_list.append( (s.oid_index, s.value) )
+                    var_list.append( (s.oid_index, s.value) )
                 else: 
                     self.__debug("Did not match this_tree. End of get_bulk.")
                     in_this_tree = False
@@ -193,7 +193,7 @@ class ch6643e(Session):
         return result
     
     def get_json_string(self):
-		stashed_timestamp = self.timestamp
+        stashed_timestamp = self.timestamp
         stashed_traces = self.traces
         self.traces = None
         if isinstance(self.timestamp, datetime):
