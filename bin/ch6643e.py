@@ -177,13 +177,13 @@ class ch6643e(Session):
                         '{}-{}'.format(ds, us),
                         self.fw_version,
                         self.fw_filename,
-                        self.wan_address,
                         self.wan_gateway,
+                        self.wan_address,
                         str(self.uptime),
-                        str(self.wan_dl), 
-                        str(self.dl_delta), 
                         str(self.wan_ul), 
-                        str(self.ul_delta)])
+                        str(self.ul_delta), 
+                        str(self.wan_dl), 
+                        str(self.dl_delta)])
         else:
             result = ';'.join([self.timestamp.strftime('%Y%m%d-%H%M%S'),
                         self.bpid,
