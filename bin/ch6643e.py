@@ -193,8 +193,17 @@ class ch6643e(Session):
         return result
     
     def get_json_string(self):
-        return json.dumps(self.__dict__, sort_keys=True, indent=4)
+		stashed_timestamp = self.timestamp
+        stashed_traces = self.traces
+        self.traces = None
+        if isinstance(self.timestamp, datetime):
+            self.timestamp = self.timestamp.isoformat()
+        json_str = json.dumps(self.__dict__, sort_keys=True, indent=4)
+        self.timestamp = stashed_timestamp
+        self.traces = stashed_traces
+        return json_str
 
+		
 # The following is only to test the class itself.
 if __name__ == '__main__':
     import argparse
