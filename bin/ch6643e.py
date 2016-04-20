@@ -8,6 +8,7 @@ import re
 import logging
 from binascii import hexlify
 import ipaddress
+import json
 
 class ch6643e(Session):
     def __init__(self, hostname='localhost', community='public', timeout=7, 
@@ -193,8 +194,11 @@ class ch6643e(Session):
                         self.hostname,
                         'timeout;;;;;;;;;;;;;;;'])
         return result
+    
+    def get_json_string(self):
+        return json.dumps(self.__dict__, sort_keys=True, indent=4)
 
-
+# The following is only to test the class itself.
 if __name__ == '__main__':
     import argparse
     from pprint import pformat
@@ -220,3 +224,4 @@ if __name__ == '__main__':
     modem.query_all()
     traces.debug(pformat(vars(modem)))
     print(modem.get_legacy_csv_line())
+    print(modem.get_json_string())
