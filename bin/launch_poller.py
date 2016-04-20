@@ -60,13 +60,16 @@ def manage_cli_arguments():
     parser.add_argument('--config',  '-c', dest="config_file", help="""
         configuration file to use.""")
     parser.add_argument('--parallel', '-p', type=int, help="Number of queries to run in parallel. The default is the number of available CPU")
+    parser.add_argument('--cachedb', '-s', help="file to be used for the cache database. It is an sqlite3 database")
     parser.add_argument('ipfile', help="""file containing modem to be queried. Format is one modem per line:
           bpid;mac;private_ip.  
           Example: 0091000060;5c353bef6106;10.133.28.103""")
 
+    # Default values
     parser.set_defaults(usage=True)
     parser.set_defaults(config_file="../conf/docsispy.secret")
     parser.set_defaults(parallel = multiprocessing.cpu_count())
+    parser.set_defaults(cachedb = "docsispy.db")
     args = parser.parse_args()
     
     if args.debug:
@@ -91,7 +94,7 @@ if __name__ == '__main__':
     poller = poller(ip_file = args.ipfile, processes = args.parallel, read_community = config['read_community'])
 
     if args.usage:
-        cache = cachedb()
+        cache = cachedb(file_name = args.cachedb)
         poller.cachedb = cache
     
     traces.debug("Config: %s", config)

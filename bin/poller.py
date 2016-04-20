@@ -75,7 +75,7 @@ class poller:
             for line in csvreader:
                 entity = { 'read_community': self.read_community, 'ip': line['ip'], 'bpid': line['bpid'], 'mac': line['mac']}
                 if (self.cachedb):
-                    entity['do_cache'] = True
+                    entity['do_cache'] = self.cachedb.file_name
                 in_q.append(entity)
         self.__debug(in_q)
         worker_pool = Pool(processes = self.processes)
@@ -111,7 +111,7 @@ def query_one_modem(entity):
     modem = ch6643e(hostname = ip, community = community, bpid = bpid, mac = mac)
     modem.query_all()
     if do_cache and modem.state == 'completed':
-        cache = cachedb()
+        cache = cachedb(file_name = do_cache)
         cache.compute_usage(modem)
     
     #output_file.write(modem.get_legacy_csv_line() + '\n')

@@ -9,6 +9,7 @@ import logging
 class cachedb(object):
 
     def __init__(self, file_name = 'docsispy.db'):
+        self.file_name = file_name
         self.connection = sqlite3.connect(file_name)
         self.cursor = self.connection.cursor()
         
