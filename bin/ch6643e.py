@@ -4,7 +4,6 @@
 
 from easysnmp import Session, exceptions
 from datetime import datetime
-import re
 import logging
 from binascii import hexlify
 import ipaddress
@@ -130,7 +129,6 @@ class ch6643e(Session):
         """
         Many SNMP GET BULK operations to mimic an SNMP WALK
         """
-        regexp = re.compile(oid + '(?:\.(\d+))*')
         
         this_tree = oid
         in_this_tree = True
@@ -140,9 +138,8 @@ class ch6643e(Session):
             
             for s in res:
                 self.__debug(s)
-                m = regexp.match(s.oid)
-                if m:
-                    var_list.append( (m.group(1), s.value) )
+                if s.oid == oid:
+					var_list.append( (s.oid_index, s.value) )
                 else: 
                     self.__debug("Did not match this_tree. End of get_bulk.")
                     in_this_tree = False
