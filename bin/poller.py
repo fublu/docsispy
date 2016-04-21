@@ -17,7 +17,8 @@ class poller:
     """
     Based on an ip.txt input file, it query all modems and produce a CSV file
     """
-    def __init__(self, ip_file = 'ip.txt', processes = multiprocessing.cpu_count(), read_community = 'public', cachedb = None):
+    def __init__(self, ip_file = 'ip.txt', processes = multiprocessing.cpu_count(), 
+                 read_community = 'public', cachedb = None, output_file = None):
         self.ip_file   = ip_file
         self.processes   = processes
         self.timestamp = datetime.today()
@@ -26,12 +27,15 @@ class poller:
         self.read_community     = read_community
         self.cachedb = cachedb
         self.traces = logging.getLogger('traces')
+        if output_file:
+            self.out_filename = output_file
+        else:
+            self.out_filename = 'results_{}.txt'.format(self.timestamp.strftime('%Y%m%d-%H%M%S'))
         
     def __debug(self,msg):
         self.traces.debug(msg)
     
     def _open_output_file(self):
-        self.out_filename = 'results_{}.txt'.format(self.timestamp.strftime('%Y%m%d-%H%M%S'))
         self.out = open(self.out_filename + '.ongoing' , 'w')
         
     def _close_output_file(self):

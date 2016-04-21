@@ -10,6 +10,8 @@ from poller import poller
 from cache  import cachedb
 import argparse, json, multiprocessing
 import logging, logging.handlers
+from datetime import datetime
+from os.path import expanduser
 
 def init_traces(level):
     """
@@ -61,15 +63,17 @@ def manage_cli_arguments():
         configuration file to use.""")
     parser.add_argument('--parallel', '-p', type=int, help="Number of queries to run in parallel. The default is the number of available CPU")
     parser.add_argument('--cachedb', '-s', help="file to be used for the cache database. It is an sqlite3 database")
+    parser.add_argument('--output', '-o', help="Output file")
     parser.add_argument('ipfile', help="""file containing modem to be queried. Format is one modem per line:
           bpid;mac;private_ip.  
           Example: 0091000060;5c353bef6106;10.133.28.103""")
 
     # Default values
     parser.set_defaults(usage=True)
-    parser.set_defaults(config_file="../conf/docsispy.secret")
+    parser.set_defaults(config_file= "{}/.docsispy/docsispy.secret".format(expanduser("~")))
     parser.set_defaults(parallel = multiprocessing.cpu_count())
-    parser.set_defaults(cachedb = "docsispy.db")
+    parser.set_defaults(cachedb = "{}/.docsispy/docsispy.db".format(expanduser("~")))
+    parser.set_defaults(output = 'results_{}.txt'.format(datetime.today().strftime('%Y%m%d-%H%M%S')) )
     args = parser.parse_args()
     
     if args.debug:
@@ -91,7 +95,8 @@ if __name__ == '__main__':
     traces.info("Start of the program")
     config = load_json_config(args.config_file)
 
-    poller = poller(ip_file = args.ipfile, processes = args.parallel, read_community = config['read_community'])
+    poller = poller(ip_file = args.ipfile, processes = args.parallel, 
+                read_community = config['read_community'], output_file = args.output)
 
     if args.usage:
         cache = cachedb(file_name = args.cachedb)
