@@ -56,7 +56,7 @@ class poller:
             for line in csvreader:
                 entity = { 'read_community': self.read_community, 'ip': line['ip'], 'bpid': line['bpid'], 'mac': line['mac']}
                 if (self.cachedb):
-                    entity['do_cache'] = True
+                    entity['do_cache'] = self.cachedb.file_name
                 self.out.write(query_one_modem(entity))
 #                modem = ch6643e(hostname = line['ip'],
 #                    community = self.read_community,
