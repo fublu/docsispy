@@ -23,7 +23,7 @@ def init_traces(level):
     traces = logging.getLogger('traces')
     traces.setLevel(level)
     fh = logging.handlers.RotatingFileHandler("launch_poller.log",
-         mode='a', maxBytes=1024*1024, backupCount=5, encoding='utf-8')
+         mode='a', maxBytes=0, backupCount=0, encoding='utf-8')
     fh.setLevel(level)
     formatter = logging.Formatter(
         '%(asctime)s - %(filename)s - %(funcName)s() - %(levelname)s: %(message)s')
@@ -105,4 +105,3 @@ if __name__ == '__main__':
     traces.debug("Config: %s", config)
 
     poller.query_all()
-

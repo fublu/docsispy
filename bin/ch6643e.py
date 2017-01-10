@@ -137,11 +137,11 @@ class ch6643e(Session):
             res = self.get_bulk(oids=this_tree, non_repeaters=0, max_repetitions=max_repetitions) 
             
             for s in res:
-                self.__debug(s)
+                # self.__debug(s)
                 if s.oid == oid:
                     var_list.append( (s.oid_index, s.value) )
                 else: 
-                    self.__debug("Did not match this_tree. End of get_bulk.")
+                    # self.__debug("Did not match this_tree. End of get_bulk.")
                     in_this_tree = False
                     break
                 if s.snmp_type == 'ENDOFMIBVIEW':
