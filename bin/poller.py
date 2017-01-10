@@ -114,15 +114,10 @@ def query_one_modem(entity):
     traces.debug('query_one_modem (PID {}): for modem {} (mac: {})'.format(os.getpid(), ip, mac))
     modem = ch6643e(hostname = ip, community = community, bpid = bpid, mac = mac)
     modem.query_all()
+    traces.debug('query_one_modem (PID {}): for modem {} (mac: {}). DONE'.format(os.getpid(), ip, mac))
     if do_cache and modem.state == 'completed':
         cache = cachedb(file_name = do_cache)
         cache.compute_usage(modem)
-    
+    traces.debug('query_one_modem (PID {}): for modem {} (mac: {}). Cache UPDATED'.format(os.getpid(), ip, mac))
     #output_file.write(modem.get_legacy_csv_line() + '\n')
     return modem.get_legacy_csv_line() + '\n'
-
-
-
-
-
-
