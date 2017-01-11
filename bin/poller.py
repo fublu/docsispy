@@ -73,7 +73,7 @@ class poller:
         self.__debug("Start of poller.query_all_ip_multiprocesses with {} processes".format(self.processes))
         self._open_output_file()
         in_q= []
-        out_q = Queue()
+        worker_pool = Pool(processes = self.processes)
         with open(self.ip_file, 'r') as csvfile:
             csvreader = csv.DictReader(csvfile, fieldnames = self.ip_fieldnames, delimiter = ';')
             for line in csvreader:
@@ -81,17 +81,16 @@ class poller:
                 if (self.cachedb):
                     entity['do_cache'] = self.cachedb.file_name
                 in_q.append(entity)
-        self.__debug(in_q)
-        worker_pool = Pool(processes = self.processes)
-        worker_pool.map_async(query_one_modem, in_q, callback = out_q.put)
+
+        self.__debug("Starting multoprocessing for {} length queue...".format(len(in_q)))
+        for line in worker_pool.imap_unordered(func=query_one_modem, iterable=in_q, chunksize=1):
+            self.out.write(line)
+            self.out.flush()
         self.__debug("Wait for worker_pool to close...")
         worker_pool.close()
         self.__debug("Closed. Waiting for all processes to finish...")
         worker_pool.join()
         self.__debug("Worker_pool finished")
-
-        for line in out_q.get():
-            self.out.write(line)
         
         self._close_output_file()
         
@@ -104,25 +103,33 @@ class poller:
 
 # Functions for multiprocessing
 def query_one_modem(entity):
-    community = entity['read_community']
-    ip = entity['ip']
-    bpid = entity['bpid']
-    mac = entity['mac']
-    do_cache = entity['do_cache']
+    try:
+        community = entity['read_community']
+        ip = entity['ip']
+        bpid = entity['bpid']
+        mac = entity['mac']
+        do_cache = entity['do_cache']
 
-    traces = logging.getLogger('traces')
-    traces.debug('query_one_modem (PID {}): for modem {} (mac: {})'.format(os.getpid(), ip, mac))
-    modem = ch6643e(hostname = ip, community = community, bpid = bpid, mac = mac)
-    modem.query_all()
-    if do_cache and modem.state == 'completed':
-        cache = cachedb(file_name = do_cache)
-        cache.compute_usage(modem)
-    
-    #output_file.write(modem.get_legacy_csv_line() + '\n')
-    return modem.get_legacy_csv_line() + '\n'
+        traces = logging.getLogger('traces')
+        traces.debug('query_one_modem (PID {}): for modem {} (mac: {}) start'.format(os.getpid(), ip, mac))
+        modem = ch6643e(hostname = ip, community = community, bpid = bpid, mac = mac)
+        modem.query_all()
+        if modem.state == 'error':
+            traces.debug('query_one_modem (PID {}): for modem {} (mac: {}). ERROR'.format(os.getpid(), ip, mac))
+        else:
+            traces.debug('query_one_modem (PID {}): for modem {} (mac: {}). DONE'.format(os.getpid(), ip, mac))
+        if do_cache and modem.state == 'completed':
+            traces.debug('query_one_modem (PID {}): for modem {} (mac: {}). start do cache'.format(os.getpid(), ip, mac))
+            cache = cachedb(file_name = do_cache)
+            cache.compute_usage(modem)
+            traces.debug('query_one_modem (PID {}): for modem {} (mac: {}). Cache UPDATED'.format(os.getpid(), ip, mac))
+        else:
+            traces.debug('query_one_modem (PID {}): for modem {} (mac: {}). Cache NOT UPDATED'.format(os.getpid(), ip, mac))
 
-
-
-
-
-
+        out = modem.get_legacy_csv_line() + '\n'
+        traces.debug('query_one_modem (PID {}): for modem {} (mac: {}). Output line is: {}'.format(os.getpid(), ip, mac, out))
+        return out
+    except:
+        logging.getLogger('traces').critical("query_one_modem (PID {}): Generic exception catched! (ip: {}, mac: {})".format(os.getpid(), ip, mac), exc_info=True)
+        return "{};{};{};error;;;;;;;;;;;;;;;".format(datetime.today().strftime('%Y%m%d-%H%M%S'), bpid, mac, ip)
+        

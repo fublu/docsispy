@@ -5,6 +5,7 @@
 from ch6643e import ch6643e
 import sqlite3
 import logging
+import os # getpid() for debug traces
 
 class cachedb(object):
 
@@ -23,7 +24,7 @@ class cachedb(object):
         self.traces = logging.getLogger('traces')
         
     def __debug(self,msg):
-        self.traces.debug(msg)
+        self.traces.debug("PID {} - {}".format(os.getpid(),msg))
 
     def compute_usage(self, modem):
         

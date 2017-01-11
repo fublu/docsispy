@@ -8,6 +8,7 @@ import logging
 from binascii import hexlify
 import ipaddress
 import json
+import os # getpid() for debug traces
 
 class ch6643e(Session):
     def __init__(self, hostname='localhost', community='public', timeout=7, 
@@ -45,16 +46,21 @@ class ch6643e(Session):
         self.traces = logging.getLogger('traces')
         
     def __debug(self,msg):
-        self.traces.debug(msg)
+        self.traces.debug("PID {} - {}".format(os.getpid(),msg))
             
     def query_all(self):
         try:
+            self.state = 'completed'
             self.get_counters()
             self.get_configdata()
             self.get_signals()
-            self.state = 'completed'
         except exceptions.EasySNMPTimeoutError as e:
+            self.__debug("SNMP timeout (ip: {}, mac: {})".format(self.hostname, self.hfc_mac))
             self.state = 'timeout'
+        except:
+            self.traces.critical("Generic exception catched! (ip: {}, mac: {})".format(self.hostname, self.hfc_mac), exc_info=True)
+            self.state = "error"
+        self.__debug("query_all for IP {} completed with status '{}'".format(self.hostname, self.state))
         
     def get_counters(self):
         """
@@ -73,9 +79,14 @@ class ch6643e(Session):
         
         self.hfc_mac = hexlify(res[0].value.encode('latin-1')).decode()
         self.uptime  = int(res[1].value)
-        self.wan_dl  = int(res[2].value)
-        self.wan_ul  = int(res[3].value)
-        
+        try:
+            self.wan_dl  = int(res[2].value)
+            self.wan_ul  = int(res[3].value)
+        except ValueError as e:
+            self.traces.error("Error converting traffic counters (ip: {}, mac: {})".format(self.hostname, self.hfc_mac))
+            self.state = 'nocounter'
+            self.wan_dl = ''
+            self.wan_ul = ''
         #self.boot_time = datetime.today() - self.uptime
         
     def get_configdata(self):
@@ -137,11 +148,11 @@ class ch6643e(Session):
             res = self.get_bulk(oids=this_tree, non_repeaters=0, max_repetitions=max_repetitions) 
             
             for s in res:
-                self.__debug(s)
+                # self.__debug(s)
                 if s.oid == oid:
                     var_list.append( (s.oid_index, s.value) )
                 else: 
-                    self.__debug("Did not match this_tree. End of get_bulk.")
+                    # self.__debug("Did not match this_tree. End of get_bulk.")
                     in_this_tree = False
                     break
                 if s.snmp_type == 'ENDOFMIBVIEW':
@@ -158,7 +169,7 @@ class ch6643e(Session):
         """
         if self.bpid == '': 
             self.bpid = self.hfc_mac
-        if self.state == 'completed':
+        if self.state in ('completed', 'nocounter'):
             ds = len(self.ds_power)
             us = len(self.us_power)
             result = ';'.join ([self.timestamp.strftime('%Y%m%d-%H%M%S'),
