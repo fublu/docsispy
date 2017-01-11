@@ -15,15 +15,24 @@ from os.path import expanduser
 
 def init_traces(level):
     """
-    Create a log file in the current working directory.
-    The logger is called 'traces'
+    Create a generic logger called 'traces'.
+    No particular output handler is created (yet).
     
     :param level: logging level (logging{DEBUG, INFO,...}
     """
     traces = logging.getLogger('traces')
     traces.setLevel(level)
-    fh = logging.handlers.RotatingFileHandler("launch_poller.log",
-         mode='a', maxBytes=0, backupCount=0, encoding='utf-8')
+    
+def activate_log_file(level, filename):
+    """
+    Attach a file Handler to the generic logger 'traces'
+    
+    :param filemane: filename to be used.
+    :param level: logging level (DEBUG, ERROR...)
+    """
+    traces = logging.getLogger('traces')
+    fh = logging.handlers.RotatingFileHandler(filename,
+         mode='a', maxBytes=1024*1024*10, backupCount=10, encoding='utf-8')
     fh.setLevel(level)
     formatter = logging.Formatter(
         '%(asctime)s - %(filename)s - %(funcName)s() - %(levelname)s: %(message)s')
@@ -77,7 +86,7 @@ def manage_cli_arguments():
     args = parser.parse_args()
     
     if args.debug:
-        init_traces(logging.DEBUG)
+        activate_log_file(logging.DEBUG, "launch_poller.log")
     if args.verbose:
         traces = logging.getLogger('traces')
         traces.setLevel(logging.DEBUG)
@@ -90,6 +99,8 @@ def manage_cli_arguments():
 
 
 if __name__ == '__main__':
+    init_traces(logging.DEBUG)
+    activate_log_file(logging.ERROR, "launch_poller-error.log")
     traces = logging.getLogger('traces')    
     args = manage_cli_arguments()
     traces.info("Start of the program")
