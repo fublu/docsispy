@@ -10,13 +10,22 @@ import ipaddress
 import json
 import os # getpid() for debug traces
 
-class ch6643e(Session):
+class ch6643e(object):
+    """
+    This object represents one Compal CH6643e cable modem.
+    
+    For multiprocessing SNMP queries, this object must be pickable. As a consequence:
+     - it cannot have Session as parent, but Session must be created on the fly.
+     - logging file (traces) must not be kept as instance attribute.
+    """
     def __init__(self, hostname='localhost', community='public', timeout=7, 
         retries=1, bpid = '', mac = ''):
 
-        self.bpid = bpid
-        Session.__init__(self, hostname=hostname, version=2, 
-            community=community, timeout=timeout, retries=retries, use_numeric=True)
+        self.bpid        = bpid
+        self.community   = community
+        self.timeout     = timeout
+        self.hostname    = hostname
+        self.retries     = retries
         
         # Not strictly required, but help to describe the data model
         self.state       = 'init'
@@ -43,26 +52,28 @@ class ch6643e(Session):
         self.dl_delta = 0
         self.ul_delta = 0
         
-        self.traces = logging.getLogger('traces')
-        
+
     def __debug(self,msg):
-        self.traces.debug("PID {} - {}".format(os.getpid(),msg))
+        logging.getLogger('traces').debug("PID {} - {}".format(os.getpid(),msg))
             
     def query_all(self):
+        session =  Session(hostname=self.hostname, version=2, 
+                           community=self.community, timeout=self.timeout, 
+                           retries=self.retries, use_numeric=True)
         try:
             self.state = 'completed'
-            self.get_counters()
-            self.get_configdata()
-            self.get_signals()
+            self.get_counters(session)
+            self.get_configdata(session)
+            self.get_signals(session)
         except exceptions.EasySNMPTimeoutError as e:
             self.__debug("SNMP timeout (ip: {}, mac: {})".format(self.hostname, self.hfc_mac))
             self.state = 'timeout'
         except:
-            self.traces.critical("Generic exception catched! (ip: {}, mac: {})".format(self.hostname, self.hfc_mac), exc_info=True)
+            logging.getLogger('traces').critical("Generic exception catched! (ip: {}, mac: {})".format(self.hostname, self.hfc_mac), exc_info=True)
             self.state = "error"
         self.__debug("query_all for IP {} completed with status '{}'".format(self.hostname, self.state))
         
-    def get_counters(self):
+    def get_counters(self, session):
         """
         Single GET SNMP operation to fetch the following values:
         ["HFC MAC address",      "IF-MIB::ifPhysAddress.2",                ".1.3.6.1.2.1.2.2.1.6.2"],
@@ -75,7 +86,7 @@ class ch6643e(Session):
                ".1.3.6.1.2.1.31.1.1.1.6.2",
                ".1.3.6.1.2.1.31.1.1.1.10.2"]
                
-        res = self.get(oid)
+        res = session.get(oid)
         
         self.hfc_mac = hexlify(res[0].value.encode('latin-1')).decode()
         self.uptime  = int(res[1].value)
@@ -83,13 +94,13 @@ class ch6643e(Session):
             self.wan_dl  = int(res[2].value)
             self.wan_ul  = int(res[3].value)
         except ValueError as e:
-            self.traces.error("Error converting traffic counters (ip: {}, mac: {})".format(self.hostname, self.hfc_mac))
+            logging.getLogger('traces').error("Error converting traffic counters (ip: {}, mac: {})".format(self.hostname, self.hfc_mac))
             self.state = 'nocounter'
             self.wan_dl = ''
             self.wan_ul = ''
         #self.boot_time = datetime.today() - self.uptime
         
-    def get_configdata(self):
+    def get_configdata(self, session):
         """
         Single SNMP GET operation to fetch the following values:
         ["Configuration file path", "DOCS-CABLE-DEVICE-MIB::docsDevServerConfigFile.0", ".1.3.6.1.2.1.69.1.4.5.0"],
@@ -108,7 +119,7 @@ class ch6643e(Session):
                ".1.3.6.1.4.1.35604.1.19.52.1.1.5.0",
                ".1.3.6.1.4.1.35604.1.19.52.1.1.10.0"]
                
-        res = self.get(oid)
+        res = session.get(oid)
 
         self.config_file = res[0].value
         self.oper_status = res[1].value
@@ -123,7 +134,7 @@ class ch6643e(Session):
             self.wan_address = 'no_WAN'
             self.wan_gateway = 'no_WAN'
        
-    def get_signals(self):
+    def get_signals(self, session):
         """
         Many SNMP GET_BULK operations to fetch the following values:
         ["Downstream powers",    "DOCS-IF-MIB::docsIfDownChannelPower",    ".1.3.6.1.2.1.10.127.1.1.1.1.6"],
@@ -132,11 +143,11 @@ class ch6643e(Session):
         """
         
         # list of tuple (id, value)
-        self.ds_power = self._get_bulk(".1.3.6.1.2.1.10.127.1.1.1.1.6", 9)
-        self.ds_snr   = self._get_bulk(".1.3.6.1.2.1.10.127.1.1.4.1.5", len(self.ds_power) + 1)
-        self.us_power = self._get_bulk(".1.3.6.1.4.1.4491.2.1.20.1.2.1.1", 5)
+        self.ds_power = self._get_bulk(session, ".1.3.6.1.2.1.10.127.1.1.1.1.6", 9)
+        self.ds_snr   = self._get_bulk(session, ".1.3.6.1.2.1.10.127.1.1.4.1.5", len(self.ds_power) + 1)
+        self.us_power = self._get_bulk(session, ".1.3.6.1.4.1.4491.2.1.20.1.2.1.1", 5)
         
-    def _get_bulk(self, oid, max_repetitions = 9):
+    def _get_bulk(self, session, oid, max_repetitions = 9):
         """
         Many SNMP GET BULK operations to mimic an SNMP WALK
         """
@@ -145,7 +156,7 @@ class ch6643e(Session):
         in_this_tree = True
         var_list = []
         while ( in_this_tree ):
-            res = self.get_bulk(oids=this_tree, non_repeaters=0, max_repetitions=max_repetitions) 
+            res = session.get_bulk(oids=this_tree, non_repeaters=0, max_repetitions=max_repetitions) 
             
             for s in res:
                 # self.__debug(s)
