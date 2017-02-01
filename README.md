@@ -28,10 +28,15 @@ The main executable is `bin/launch_poller.py`. A detailed help is available with
 
 A typical invocation of the program is:
 ```
-launch_poller.py --parallel 500 --config ~/.docsispy/docsispy.secret --cachedb ~/.docsispy/docsispy.db
+launch_poller.py --parallel 500 --config ~/.docsispy/docsispy.secret --cachedb ~/.docsispy/docsispy.db --output results.txt ip.txt
 ```
-
 It can be scheduled via crontab for regular queries.
+
+The only strictly mandatory parameter in the input file (`ip.txt` in the example above).  It contains the list of modems to be queried. The format is one modem per line with the following syntax: `bpid;mac;private_ip`.
+
+  Example: 123456;51be3bea6106;10.0.0.1
+
+`bpid` is a customer reference, not used in the program execution, but easy to keep in the output file as an easy reference to the customer.
 
 ### Contributing ###
 
